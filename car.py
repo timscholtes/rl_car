@@ -17,7 +17,7 @@ class Car():
 	def __init__(self,track):
 		
 		self.track = track
-		self.dt = 0.1							# time unit
+		self.dt = 1							# time unit
 		self.pos = [448,261]					# start position
 		self.theta = 270						# direction pointing (compass)
 		self.s = 0								# speed
@@ -26,9 +26,10 @@ class Car():
 
 		self.max_turn = 1
 		self.max_accel = 1
+		self.max_speed = 50
 
 		self.ray_d = (-90,-60,-30,0,30,60,90)	# direction rays point rel to car dir
-		self.ray_l = 50							# length of rays in px
+		self.ray_l = 50.0							# length of rays in px
 		self.ray_traces = [self.ray_l]*len(self.ray_d)
 		self.ray_tracer()
 
@@ -39,7 +40,10 @@ class Car():
 		self.d = 0								# cuml distance
 		self.v = [self.s * math.sin(self.theta*180/math.pi),self.s * math.cos(self.theta*180/math.pi)]
 		self.ray_tracer()
-		pass
+		state = self.ray_traces
+		state = [i / self.ray_l for i in state]
+		state.append(self.s/self.max_speed)
+		return state,0,False
 		
 	def ray_tracer(self):
 
@@ -62,7 +66,7 @@ class Car():
 		accel = action // 3 - 1 						# accel and steer now (-1,0,1)
 		steer = action % 3 - 1
 
-		self.s += max(accel*self.max_accel*self.dt,0)
+		self.s += min(max(accel*self.max_accel*self.dt,0),self.max_speed)
 		self.theta += steer*self.max_turn
 		
 		self.v = [self.s * math.sin(self.theta*math.pi/180),self.s * math.cos(self.theta*math.pi/180)]
@@ -73,7 +77,7 @@ class Car():
 		self.ray_tracer()
 
 		# check if done
-		done = np.amin(self.ray_traces) <= 1 or self.d > 10000 or (self.ray_traces[3])/self.s <= self.dt
+		done = np.amin(self.ray_traces) <= 1 or self.d > 10000 or (self.ray_traces[3])/(self.s+0.01) <= self.dt
 
 		if not done:
 			reward = self.s
@@ -82,13 +86,16 @@ class Car():
 		else:
 			reward = -20
 
-		return self.pos,self.s,self.v,self.d,self.theta,self.ray_traces,reward,done
+		state = self.ray_traces
+		state = [i / self.ray_l for i in state]
+		state.append(self.s/self.max_speed)
+		return state,reward,done
 
 
 ###
 
 if __name__ == "__main__":
-	
+
 	image = img.imread('run_track.bmp')[:,:,0]
 	image = image == 0
 	track_px = image.astype(int)
@@ -98,9 +105,9 @@ if __name__ == "__main__":
 	i = 0
 	done = False
 	while not done and i < 10000000:
-		p,s,v,dist,theta,rt,r,done = car.step(7)
+		state,r,done = car.step(7)
 		if i % 20 == 0:
-			print(p,s,v,dist,theta,rt,car.ray_traces[3]/car.s)
+			print(state)
 			# plt.matshow(track_px)
 			# plt.plot(p[0],p[1],marker='o')
 			# plt.show()
