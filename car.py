@@ -99,18 +99,53 @@ if __name__ == "__main__":
 	image = img.imread('run_track.bmp')[:,:,0]
 	image = image == 0
 	track_px = image.astype(int)
-
+	
 	car = Car(track_px)
-	print(car.ray_traces)
+
+	
+
+	# plt.imshow(1-track_px,cmap='gray')
+	# plt.plot(car.pos[0],car.pos[1],marker='.')
+	# dx = max(car.s,1)*car.dt*math.sin(car.theta*math.pi/180)
+	# dy = -max(car.s,1)*car.dt*math.cos(car.theta*math.pi/180)
+	# print(dx,dy)
+	# plt.arrow(car.pos[0],car.pos[1],dx = dx,dy=dy,shape='full',head_width=5)
+
+	# plt.show()
+
+	######
+
+	def plotter(i):
+		fig = plt.figure(figsize=(15,4))
+		ax1 = plt.subplot2grid((1,4),(0,0),colspan=2,rowspan=2)
+		ax2 = plt.subplot2grid((1,4),(0,2))
+		ax3 = plt.subplot2grid((1,4),(0,3))
+
+		ax1.imshow(1-track_px,cmap='gray')
+		ax1.plot(car.pos[0],car.pos[1],marker='.')
+		dx = max(car.s,1)*10*car.dt*math.sin(car.theta*math.pi/180)
+		dy = -max(car.s,1)*10*car.dt*math.cos(car.theta*math.pi/180)
+		
+		ax1.arrow(car.pos[0],car.pos[1],dx = dx,dy=dy,shape='full',head_width=5)
+		ax1.autoscale()
+		ax2.set_ylim([0,50])
+		ax2.set_title('Speed')
+		ax2.bar(1,car.s)
+		ax3.text(0.1,0.5,'Distance:'+str(np.round(car.d)))
+		ax3.axis('off')
+		#plt.tight_layout()
+		plt.savefig('frames/'+str(i).zfill(4)+'.png')
+		#plt.show()
+	
+	#plotter()
+
 	i = 0
 	done = False
 	while not done and i < 10000000:
 		state,r,done = car.step(7)
-		if i % 20 == 0:
-			print(state)
-			# plt.matshow(track_px)
-			# plt.plot(p[0],p[1],marker='o')
-			# plt.show()
+		if i % 5 == 0:
+			print(i)
+			plotter(i)
 		i += 1
 
 
