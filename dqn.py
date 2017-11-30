@@ -4,13 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as img
 from car import Car
+import os
 
 try:
     xrange = xrange
 except:
     xrange = range
 
-image = img.imread('run_track.bmp')[:,:,0]
+image = img.imread('run_track2.bmp')[:,:,0]
 image = image == 0
 track_px = image.astype(int)
 
@@ -18,6 +19,9 @@ car = Car(track_px)
 
 gamma = 0.99
 save_freq = 500
+demo_freq = 250
+demo_frame_freq = 10
+e = 0.1
 
 def discount_rewards(r):
     """ take 1D float array of rewards and compute discounted reward """
@@ -65,7 +69,7 @@ tf.reset_default_graph() #Clear the Tensorflow graph.
 
 myAgent = agent(lr=1e-2,s_size=8,a_size=9,h_size=64) #Load the agent.
 
-total_episodes = 3000 #Set total number of episodes to train agent on.
+total_episodes = 10000 #Set total number of episodes to train agent on.
 max_ep = 999
 update_frequency = 20
 
@@ -76,21 +80,44 @@ with tf.Session() as sess:
     sess.run(init)
     i = 0
     total_reward = []
-    total_lenght = []
+    total_length = []
         
     gradBuffer = sess.run(tf.trainable_variables())
     for ix,grad in enumerate(gradBuffer):
         gradBuffer[ix] = grad * 0
         
     while i < total_episodes:
+
+        # output a demo run with still frames to be giffed together later
+        if i % demo_freq == 0:
+            os.makedirs('frames/ep_'+str(i)+'/')
+            telemetry,r,d = car.reset()
+
+            for j in range(max_ep):
+                if j % demo_frame_freq == 0:
+                    car.plotter(j,'Episode '+str(i),'frames/ep_'+str(i)+'/'+str(j).zfill(5)+'.png')
+                a_dist = sess.run(myAgent.output,feed_dict={myAgent.state_in:[telemetry]})
+                a = np.random.choice(a_dist[0],p=a_dist[0])
+                a = np.argmax(a_dist == a)
+                
+                telemetry_new,r,d = car.step(a)
+                if d:
+                    break
+        # end of demo section
+
         telemetry,r,d = car.reset()
         running_reward = 0
         ep_history = []
         for j in range(max_ep):
             #Probabilistically pick an action given our network outputs.
-            a_dist = sess.run(myAgent.output,feed_dict={myAgent.state_in:[telemetry]})
-            a = np.random.choice(a_dist[0],p=a_dist[0])
-            a = np.argmax(a_dist == a)
+            
+            if np.random.rand(1) < e:
+                a = np.random.randint(9)
+            else:
+                a_dist = sess.run(myAgent.output,feed_dict={myAgent.state_in:[telemetry]})
+                a = np.random.choice(a_dist[0],p=a_dist[0])
+                a = np.argmax(a_dist == a)
+
 
             telemetry_new,r,d = car.step(a) #Get our reward for taking an action given a bandit.
 
@@ -114,7 +141,7 @@ with tf.Session() as sess:
                         gradBuffer[ix] = grad * 0
                 
                 total_reward.append(running_reward)
-                total_lenght.append(j)
+                total_length.append(j)
                 break
 
         

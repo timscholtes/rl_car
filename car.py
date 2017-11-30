@@ -29,7 +29,7 @@ class Car():
 		self.max_speed = 50.0
 
 		self.ray_d = (-60,-40,-20,0,20,40,60)	# direction rays point rel to car dir
-		self.ray_l = 50.0							# length of rays in px
+		self.ray_l = 100.0							# length of rays in px
 		self.ray_traces = [self.ray_l]*len(self.ray_d)
 		self.ray_tracer()
 
@@ -91,6 +91,34 @@ class Car():
 		state.append(self.s/self.max_speed)
 		return state,reward,done
 
+	def plotter(self,i,title,save_dest):
+		fig = plt.figure(figsize=(15,4))
+		fig.suptitle(title, fontsize=16)
+		ax1 = plt.subplot2grid((1,5),(0,0),colspan=2,rowspan=2)
+		ax2 = plt.subplot2grid((1,5),(0,2))
+		ax3 = plt.subplot2grid((1,5),(0,3))
+		ax4 = plt.subplot2grid((1,5),(0,4))
+
+		ax1.imshow(1-self.track,cmap='gray')
+		ax1.plot(self.pos[0],self.pos[1],marker='.')
+		dx = max(self.s,1)*10*self.dt*math.sin(self.theta*math.pi/180)
+		dy = -max(self.s,1)*10*self.dt*math.cos(self.theta*math.pi/180)
+		
+		ax1.arrow(self.pos[0],self.pos[1],dx = dx,dy=dy,shape='full',head_width=5)
+		ax1.autoscale()
+		
+		ax2.set_ylim([0,50])
+		ax2.set_title('Speed')
+		ax2.bar(1,self.s)
+
+		ax3.set_ylim([0,self.ray_l])
+		ax3.bar([-60,-40,-20,0,20,40,60],self.ray_traces,width=20)
+
+		ax4.text(0.1,0.5,'Distance:'+str(np.round(self.d)))
+		ax4.text(0.1,0.8,'Timestep:'+str(i))
+		ax4.axis('off')
+		plt.savefig(save_dest)
+		plt.close('all')
 
 ###
 
@@ -115,27 +143,7 @@ if __name__ == "__main__":
 
 	######
 
-	def plotter(i):
-		fig = plt.figure(figsize=(15,4))
-		ax1 = plt.subplot2grid((1,4),(0,0),colspan=2,rowspan=2)
-		ax2 = plt.subplot2grid((1,4),(0,2))
-		ax3 = plt.subplot2grid((1,4),(0,3))
 
-		ax1.imshow(1-track_px,cmap='gray')
-		ax1.plot(car.pos[0],car.pos[1],marker='.')
-		dx = max(car.s,1)*10*car.dt*math.sin(car.theta*math.pi/180)
-		dy = -max(car.s,1)*10*car.dt*math.cos(car.theta*math.pi/180)
-		
-		ax1.arrow(car.pos[0],car.pos[1],dx = dx,dy=dy,shape='full',head_width=5)
-		ax1.autoscale()
-		ax2.set_ylim([0,50])
-		ax2.set_title('Speed')
-		ax2.bar(1,car.s)
-		ax3.text(0.1,0.5,'Distance:'+str(np.round(car.d)))
-		ax3.axis('off')
-		#plt.tight_layout()
-		plt.savefig('frames/'+str(i).zfill(4)+'.png')
-		#plt.show()
 	
 	#plotter()
 
@@ -143,9 +151,9 @@ if __name__ == "__main__":
 	done = False
 	while not done and i < 10000000:
 		state,r,done = car.step(7)
-		if i % 5 == 0:
+		if i % 50 == 0:
 			print(i)
-			plotter(i)
+			car.plotter(i,'abc','frames/'+str(i).zfill(4)+'.png')
 		i += 1
 
 

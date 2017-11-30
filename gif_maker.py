@@ -1,11 +1,14 @@
 import imageio
 import os
 images = []
-filenames = os.listdir('frames/')
-for filename in filenames:
-	x = 'frames/'+filename
-	print(x)
-	if x != 'frames/Thumbs.db':
-		images.append(imageio.imread(x))
+for p in range(0,2001,100):
 
-imageio.mimsave('Z:/GROUP/TIM/GIT/rl_car/movie.gif', images)
+	path = 'frames/ep_'+str(p)+'/'
+	filenames = os.listdir(path)
+	for filename in filenames:
+		x = path+filename
+		print(x)
+		if x != path+'Thumbs.db':
+			images.append(imageio.imread(x))
+
+imageio.mimsave('movie.gif', images)
