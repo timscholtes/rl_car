@@ -17,7 +17,7 @@ class Car():
 	def __init__(self,track):
 		
 		self.track = track
-		self.dt = 1							# time unit
+		self.dt = 0.2							# time unit
 		self.pos = [448,261]					# start position
 		self.theta = 270						# direction pointing (compass)
 		self.s = 0								# speed
@@ -26,9 +26,9 @@ class Car():
 
 		self.max_turn = 1
 		self.max_accel = 1
-		self.max_speed = 50
+		self.max_speed = 50.0
 
-		self.ray_d = (-90,-60,-30,0,30,60,90)	# direction rays point rel to car dir
+		self.ray_d = (-60,-40,-20,0,20,40,60)	# direction rays point rel to car dir
 		self.ray_l = 50.0							# length of rays in px
 		self.ray_traces = [self.ray_l]*len(self.ray_d)
 		self.ray_tracer()
@@ -80,11 +80,11 @@ class Car():
 		done = np.amin(self.ray_traces) <= 1 or self.d > 10000 or (self.ray_traces[3])/(self.s+0.01) <= self.dt
 
 		if not done:
-			reward = self.s
+			reward = self.s/self.max_speed
 		elif self.d > 10000:
 			reward = 0
 		else:
-			reward = -20
+			reward = -1
 
 		state = self.ray_traces
 		state = [i / self.ray_l for i in state]

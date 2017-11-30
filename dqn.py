@@ -17,7 +17,7 @@ track_px = image.astype(int)
 car = Car(track_px)
 
 gamma = 0.99
-save_freq = 50
+save_freq = 500
 
 def discount_rewards(r):
     """ take 1D float array of rewards and compute discounted reward """
@@ -34,7 +34,8 @@ class agent():
         self.state_in= tf.placeholder(shape=[None,s_size],dtype=tf.float32)
         hidden1 = slim.fully_connected(self.state_in,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
         hidden2 = slim.fully_connected(hidden1,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
-        self.output = slim.fully_connected(hidden2,a_size,activation_fn=tf.nn.softmax,biases_initializer=None)
+        hidden3 = slim.fully_connected(hidden2,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
+        self.output = slim.fully_connected(hidden3,a_size,activation_fn=tf.nn.softmax,biases_initializer=None)
         self.chosen_action = tf.argmax(self.output,1)
 
         #The next six lines establish the training proceedure. We feed the reward and chosen action into the network
@@ -118,7 +119,7 @@ with tf.Session() as sess:
 
         
         #Update our running tally of scores.
-        if i % 50 == 0:
+        if i % 20 == 0:
             print(np.mean(total_reward[-100:]))
 
         if i % save_freq == 0:
