@@ -150,7 +150,7 @@ with tf.Session() as sess:
                     targetQ = Q
                     updated_vals = train_batch[:,1] + gamma * maxQ1
                     idxs = list(train_batch[:,3])
-                    targetQ[:,idxs] = updated_vals
+                    targetQ[range(batch_size),idxs] = updated_vals
 
                     _ = sess.run(myAgent.update_batch,feed_dict={myAgent.target:targetQ,
                         myAgent.state_in: np.vstack(train_batch[:,0])})
