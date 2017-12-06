@@ -3,16 +3,16 @@ import tensorflow.contrib.slim as slim
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as img
-from car import Car
+from car_LCR import Car
 import os
 import random
-
+import time
 try:
     xrange = xrange
 except:
     xrange = range
 
-image = img.imread('run_track2.bmp')[:,:,0]
+image = img.imread('run_track3.bmp')[:,:,0]
 image = image == 0
 track_px = image.astype(int)
 
@@ -21,7 +21,7 @@ car = Car(track_px)
 gamma = 0.99
 pre_train_length = 1e3
 save_freq = 1000
-demo_freq = 1000
+demo_freq = 1000000
 demo_frame_freq = 10
 e = 0.1
 
@@ -29,13 +29,13 @@ lr = 1e-2
 batch_size = 64
 buffer_size = 50000
 s_size = 8
-a_size = 9
-h_size = 24
+a_size = 2
+h_size = 8
 
 total_episodes = 1e6 #Set total number of episodes to train agent on.
 max_ep = 999
 update_frequency = 25
-print_freq = 500
+print_freq = 100
 
 
 
@@ -56,7 +56,6 @@ class Agent():
         optimizer = tf.train.AdamOptimizer(learning_rate = lr)
         self.update_batch = optimizer.minimize(self.loss)
 
-
 class Experience_buffer():
     def __init__(self, buffer_size = 50000):
         self.buffer = []
@@ -71,11 +70,27 @@ class Experience_buffer():
         s = random.sample(self.buffer,size)
         return np.reshape(np.array(s),[size,5])
 
+class Experience_buffer_set_list():
+    def __init__(self, buffer_size = 50000):
+        self.buffer = []
+        self.buffer_size = buffer_size
+    
+    def add(self,experience):
+        if len(self.buffer) < self.buffer_size:
+            self.buffer.append(experience)
+        else:
+            self.buffer[random.randrange(self.buffer_size)] = experience
+            
+    def sample(self,size):
+        s = random.sample(self.buffer,size)
+        return np.reshape(np.array(s),[size,5])
+
 tf.reset_default_graph() #Clear the Tensorflow graph.
 
 #myAgent = agent(lr=1e-2,s_size=8,a_size=9,h_size=64) #Load the agent.
 myAgent = Agent(lr=lr,s_size=s_size,a_size=a_size,h_size=h_size) #Load the agent.
 xp_buffer = Experience_buffer(buffer_size)
+# xp_buffer = Experience_buffer_set_list(buffer_size)
 
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
@@ -87,35 +102,35 @@ with tf.Session() as sess:
     total_reward = []
     total_length = []
 
-    for files in os.listdir("frames"):
-        fn=os.path.join("frames", files)
-        os.system("rm -rf "+fn)
-        break
+    # for files in os.listdir("frames"):
+    #     fn=os.path.join("frames", files)
+    #     os.system("rm -rf "+fn)
+    #     break
         
     gradBuffer = sess.run(tf.trainable_variables())
     for ix,grad in enumerate(gradBuffer):
         gradBuffer[ix] = grad * 0
         
     while i < total_episodes:
-
+        prev = time.time()
         # output a demo run with still frames to be giffed together later
-        if i % demo_freq == 0:
-            os.makedirs('frames/ep_'+str(i)+'/')
-            telemetry,r,d = car.reset()
+        # if i % demo_freq == 0:
+        #     os.makedirs('frames/ep_'+str(i)+'/')
+        #     telemetry,r,d = car.reset()
 
-            for j in range(max_ep):
-                if j % demo_frame_freq == 0:
-                    car.plotter(j,'Episode '+str(i),'frames/ep_'+str(i)+'/'+str(j).zfill(5)+'.png')
+        #     for j in range(max_ep):
+        #         if j % demo_frame_freq == 0:
+        #             car.plotter(j,'Episode '+str(i),'frames/ep_'+str(i)+'/'+str(j).zfill(5)+'.png')
 
 
-                a_dist = sess.run(myAgent.Q_out,feed_dict={myAgent.state_in:[telemetry]})
+        #         a_dist = sess.run(myAgent.Q_out,feed_dict={myAgent.state_in:[telemetry]})
 
-                a = np.random.choice(a_dist[0],p=a_dist[0])
-                a = np.argmax(a_dist == a)
+        #         a = np.random.choice(a_dist[0],p=a_dist[0])
+        #         a = np.argmax(a_dist == a)
                 
-                telemetry_new,r,d = car.step(a)
-                if d:
-                    break
+        #         telemetry_new,r,d = car.step(a)
+        #         if d:
+        #             break
         # end of demo section
 
         telemetry,r,d = car.reset()
@@ -126,11 +141,12 @@ with tf.Session() as sess:
             
             
             a_dist = sess.run(myAgent.Q_out,feed_dict={myAgent.state_in:[telemetry]})
-            if np.random.rand(1) < e:
-                a = np.random.randint(9)
-            else:
-                a = np.random.choice(a_dist[0],p=a_dist[0])
-                a = np.argmax(a_dist == a)
+            a = 1
+            # if np.random.rand(1) < e:
+            #     a = np.random.randint(a_size)
+            # else:
+            #     a = np.random.choice(a_dist[0],p=a_dist[0])
+            #     a = np.argmax(a_dist == a)
 
             telemetry_new,r,d = car.step(a) #Get our reward for taking an action given a bandit.
 
@@ -164,7 +180,9 @@ with tf.Session() as sess:
         
         #Update our running tally of scores.
         if i % print_freq == 0:
-            print(i,total_steps,np.mean(total_reward[-100:]))
+            now = time.time()
+            print(i,total_steps,np.mean(total_reward[-100:]),now)
+            
 
         if i % save_freq == 0:
             save_path = saver.save(sess,'saved_models/model'+str(i)+'ckpt')
