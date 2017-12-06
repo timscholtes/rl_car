@@ -19,22 +19,22 @@ track_px = image.astype(int)
 car = Car(track_px)
 
 gamma = 0.99
-pre_train_length = 1e4
+pre_train_length = 1e3
 save_freq = 1000
 demo_freq = 1000
 demo_frame_freq = 10
 e = 0.1
 
 lr = 1e-2
-batch_size = 100
-buffer_size = 100000
+batch_size = 64
+buffer_size = 50000
 s_size = 8
 a_size = 9
 h_size = 24
 
-total_episodes = 10000 #Set total number of episodes to train agent on.
+total_episodes = 1e6 #Set total number of episodes to train agent on.
 max_ep = 999
-update_frequency = 500
+update_frequency = 25
 print_freq = 500
 
 
