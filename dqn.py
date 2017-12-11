@@ -29,7 +29,7 @@ lr = 1e-2
 batch_size = 64
 buffer_size = 50000
 s_size = 8
-a_size = 2
+a_size = 3
 h_size = 8
 
 total_episodes = 1e6 #Set total number of episodes to train agent on.

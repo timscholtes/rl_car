@@ -17,7 +17,7 @@ class Car():
 	def __init__(self,track):
 		
 		self.track = track
-		self.dt = 0.2							# time unit
+		self.dt = 0.5							# time unit
 		self.pos = [448,261]					# start position
 		self.theta = 270						# direction pointing (compass)
 		self.s = 10								# speed

@@ -19,18 +19,18 @@ track_px = image.astype(int)
 car = Car(track_px)
 
 gamma = 0.99
-pre_train_length = 1e3
+pre_train_length = 5e3
 save_freq = 1000
 demo_freq = 1000000
 demo_frame_freq = 10
 startE = 1
 endE = 0.1
-annealing_steps = 10000
+annealing_steps = 100000
 
 lr = 1e-2
 tau = 0.001
 batch_size = 64
-buffer_size = 50000
+buffer_size = 100000
 s_size = 8
 a_size = 3
 h_size = 32
@@ -57,9 +57,9 @@ class Agent():
 
 
         self.targetQ = tf.placeholder(shape=[None],dtype = tf.float32)
-        self.actions = tf.placeholder(shape=[None],dtype = tf.float32)
+        self.actions = tf.placeholder(shape=[None],dtype = tf.int32)
 
-        self.actions_oh = tf.one_hot(self.actions,a_size,dtype=tf.int32)
+        self.actions_oh = tf.one_hot(self.actions,a_size)
         self.Q_eval = tf.reduce_sum(tf.multiply(self.Q_out,self.actions_oh), axis = 1)
 
         self.loss = tf.reduce_sum(tf.square(self.targetQ-self.Q_eval))
@@ -167,13 +167,11 @@ with tf.Session() as sess:
             #Probabilistically pick an action given our network outputs.
             
             
-            a_dist = sess.run(actor.Q_out,feed_dict={actor.state_in:[telemetry]})
-            a = 1
+            
             if np.random.rand(1) < e:
                 a = np.random.randint(a_size)
             else:
-                a = np.random.choice(a_dist[0],p=a_dist[0])
-                a = np.argmax(a_dist == a)
+                a = sess.run(actor.predict,feed_dict={actor.state_in:[telemetry]})
 
             telemetry_new,r,d = car.step(a) #Get our reward for taking an action given a bandit.
 
@@ -214,7 +212,7 @@ with tf.Session() as sess:
         #Update our running tally of scores.
         if i % print_freq == 0:
             now = time.time()
-            print(i,total_steps,np.mean(total_reward[-100:]),now)
+            print(i,total_steps,np.mean(total_reward[-100:]),np.mean(total_length[-100:]),now)
             
 
         if i % save_freq == 0:
