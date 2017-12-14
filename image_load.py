@@ -3,15 +3,14 @@ import matplotlib.image as img
 import matplotlib.pyplot as plt
 import numpy as np
 
-image = img.imread('run_track.bmp')[:,:,0]
+image = img.imread('runtrack5.bmp')[:,:,0]
 
 print(np.shape(image))
 print(type(image))
 
 image = image == 0
 track_px = image.astype(int)
+print(np.shape(track_px))
 
-# print(track_px[242:280,400])
-
-y = plt.matshow(track_px)
-plt.show(y)
+# y = plt.matshow(track_px)
+# plt.show(y)

@@ -3,7 +3,7 @@ import matplotlib.image as img
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-
+import os
 ### load in image
 
 # image = img.imread('run_track.bmp')[:,:,0]
@@ -17,8 +17,8 @@ class Car():
 	def __init__(self,track):
 		
 		self.track = track
-		self.dt = 0.5							# time unit
-		self.pos = [448,261]					# start position
+		self.dt = 0.2							# time unit
+		self.pos = [700,503]#[448,261]					# start position
 		self.theta = 270						# direction pointing (compass)
 		self.s = 10								# speed
 		self.d = 0								# cuml distance
@@ -34,7 +34,7 @@ class Car():
 		self.ray_tracer()
 
 	def reset(self):
-		self.pos = [448,261]					# start position
+		self.pos = [700,503]#[448,261]					# start position
 		self.theta = 270						# direction pointing (compass)
 		self.s = 10								# speed
 		self.d = 0								# cuml distance
@@ -51,8 +51,13 @@ class Car():
 			on_track = True
 			p = 0
 
-			while p < self.ray_l and on_track:
-				p += 1
+			while p <= self.ray_l and on_track:
+				if p <= 20:
+					p += 1
+				elif p < 50:
+					p += 5
+				else:
+					p += 10
 				px = int(np.round(self.pos[0] + p*math.sin((self.theta + r)*math.pi/180)))
 				py = int(np.round(self.pos[1] - p*math.cos((self.theta + r)*math.pi/180)))
 				on_track = self.track[py,px] == 0
@@ -79,7 +84,7 @@ class Car():
 		done = np.amin(self.ray_traces) <= 1 or self.d > 10000 or (self.ray_traces[3])/(self.s+0.01) <= self.dt
 
 		if not done:
-			reward = self.s/self.max_speed
+			reward = 0 #self.s/self.max_speed
 		elif self.d > 10000:
 			reward = 0
 		else:
@@ -90,13 +95,14 @@ class Car():
 		state.append(self.s/self.max_speed)
 		return state,reward,done
 
-	def plotter(self,i,title,save_dest):
+	def plotter(self,i,title,save_dest,extra=None):
 		fig = plt.figure(figsize=(15,4))
 		fig.suptitle(title, fontsize=16)
-		ax1 = plt.subplot2grid((1,5),(0,0),colspan=2,rowspan=2)
-		ax2 = plt.subplot2grid((1,5),(0,2))
-		ax3 = plt.subplot2grid((1,5),(0,3))
-		ax4 = plt.subplot2grid((1,5),(0,4))
+		ax1 = plt.subplot2grid((1,6),(0,0),colspan=2,rowspan=2)
+		ax2 = plt.subplot2grid((1,6),(0,2))
+		ax3 = plt.subplot2grid((1,6),(0,3))
+		ax4 = plt.subplot2grid((1,6),(0,4))
+		ax5 = plt.subplot2grid((1,6),(0,5))
 
 		ax1.imshow(1-self.track,cmap='gray')
 		ax1.plot(self.pos[0],self.pos[1],marker='.')
@@ -116,6 +122,10 @@ class Car():
 		ax4.text(0.1,0.5,'Distance:'+str(np.round(self.d)))
 		ax4.text(0.1,0.8,'Timestep:'+str(i))
 		ax4.axis('off')
+
+		ax5.set_ylim([0,1])
+		ax5.bar([-1,0,1],extra,width=1)
+
 		plt.savefig(save_dest)
 		plt.close('all')
 
@@ -123,37 +133,31 @@ class Car():
 
 if __name__ == "__main__":
 
-	image = img.imread('run_track.bmp')[:,:,0]
+	image = img.imread('runtrack5.bmp')[:,:,0]
 	image = image == 0
 	track_px = image.astype(int)
 	
 	car = Car(track_px)
 
 	
-
-	# plt.imshow(1-track_px,cmap='gray')
-	# plt.plot(car.pos[0],car.pos[1],marker='.')
-	# dx = max(car.s,1)*car.dt*math.sin(car.theta*math.pi/180)
-	# dy = -max(car.s,1)*car.dt*math.cos(car.theta*math.pi/180)
-	# print(dx,dy)
-	# plt.arrow(car.pos[0],car.pos[1],dx = dx,dy=dy,shape='full',head_width=5)
-
-	# plt.show()
-
-	######
-
-
-	
-	#plotter()
-
 	i = 0
 	done = False
+	os.makedirs('frames/tmp/')
+	running_r = 0
 	while not done and i < 10000000:
-		state,r,done = car.step(7)
-		if i % 50 == 0:
+		if i < 140:
+			move = 1
+		else:
+			move = 2
+		# state,r,done = car.step(np.random.randint(3))
+		state,r,done = car.step(move)
+		running_r += r
+		if i % 20 == 0:
 			print(i)
-			car.plotter(i,'abc','frames/'+str(i).zfill(4)+'.png')
+
+			car.plotter(i,'abc','frames/tmp'+str(i).zfill(4)+'.png',[0.1,0.5,0.4])
 		i += 1
+	print(running_r)
 
 
 

@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 import matplotlib.image as img
 from car_LCR import Car
 import os
@@ -19,21 +20,21 @@ track_px = image.astype(int)
 car = Car(track_px)
 
 gamma = 0.99
-pre_train_length = 5e3
+pre_train_length = 5e4
 save_freq = 1000
-demo_freq = 1000000
-demo_frame_freq = 10
+demo_freq = 100
+demo_frame_freq = 25
 startE = 1
-endE = 0.1
-annealing_steps = 100000
+endE = 0.05
+annealing_steps = 2e5
 
-lr = 1e-2
+lr = 100
 tau = 0.001
-batch_size = 64
+batch_size = 128
 buffer_size = 100000
 s_size = 8
 a_size = 3
-h_size = 32
+h_size = 8
 
 total_episodes = 1e6 #Set total number of episodes to train agent on.
 max_ep = 999
@@ -43,15 +44,19 @@ print_freq = 100
 e = startE
 eDrop = (startE - endE)/annealing_steps
 
+def softmax(w, t = 1.0):
+    e = np.exp(w / t)
+    dist = e / np.sum(e)
+    return dist
 
 class Agent():
     def __init__(self, lr, s_size,a_size,h_size):
         #These lines established the feed-forward part of the network. The agent takes a state and produces an action.
         self.state_in= tf.placeholder(shape=[None,s_size],dtype=tf.float32)
-        hidden1 = slim.fully_connected(self.state_in,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
-        hidden2 = slim.fully_connected(hidden1,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
+        hidden1 = slim.fully_connected(self.state_in,h_size,activation_fn=tf.nn.elu)
+        hidden2 = slim.fully_connected(hidden1,h_size,activation_fn=tf.nn.elu)
         # hidden3 = slim.fully_connected(hidden2,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
-        self.Q_out = slim.fully_connected(hidden2,a_size,activation_fn=tf.nn.softmax,biases_initializer=None)
+        self.Q_out = slim.fully_connected(hidden2,a_size,activation_fn=None)
         self.predict = tf.argmax(self.Q_out,1)
 
 
@@ -62,7 +67,7 @@ class Agent():
         self.actions_oh = tf.one_hot(self.actions,a_size)
         self.Q_eval = tf.reduce_sum(tf.multiply(self.Q_out,self.actions_oh), axis = 1)
 
-        self.loss = tf.reduce_sum(tf.square(self.targetQ-self.Q_eval))
+        self.loss = tf.reduce_mean(tf.square(self.targetQ-self.Q_eval))
         optimizer = tf.train.AdamOptimizer(learning_rate = lr)
         self.update_batch = optimizer.minimize(self.loss)
 
@@ -125,6 +130,7 @@ targetOps = updateTargetGraph(trainables,tau)
 with tf.Session() as sess:
     sess.run(init)
     i = 0
+    j = 0
     total_steps = 0
     total_reward = []
     total_length = []
@@ -133,31 +139,31 @@ with tf.Session() as sess:
     #     fn=os.path.join("frames", files)
     #     os.system("rm -rf "+fn)
     #     break
-        
-    gradBuffer = sess.run(tf.trainable_variables())
-    for ix,grad in enumerate(gradBuffer):
-        gradBuffer[ix] = grad * 0
+    run_name = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')+'_'+str(h_size)+'_'+str(lr)+'_'+str(tau)+'_'+str(batch_size)+'_'+str(endE)
         
     while i < total_episodes:
         prev = time.time()
         # output a demo run with still frames to be giffed together later
-        # if i % demo_freq == 0:
-        #     os.makedirs('frames/ep_'+str(i)+'/')
-        #     telemetry,r,d = car.reset()
+        if i % demo_freq == 0 and j >= pre_train_length:
+            os.makedirs('frames/'+run_name+'/ep_'+str(i).zfill(5)+'/')
+            telemetry,r,d = car.reset()
 
-        #     for j in range(max_ep):
-        #         if j % demo_frame_freq == 0:
-        #             car.plotter(j,'Episode '+str(i),'frames/ep_'+str(i)+'/'+str(j).zfill(5)+'.png')
-
-
-        #         a_dist = sess.run(myAgent.Q_out,feed_dict={myAgent.state_in:[telemetry]})
-
-        #         a = np.random.choice(a_dist[0],p=a_dist[0])
-        #         a = np.argmax(a_dist == a)
+            for j in range(max_ep):
                 
-        #         telemetry_new,r,d = car.step(a)
-        #         if d:
-        #             break
+
+
+                a_dist = sess.run(actor.Q_out,feed_dict={actor.state_in:[telemetry]})
+                # a = np.random.choice(a_size,p=a_dist[0])
+                a = np.argmax(a_dist[0])
+                
+                telemetry,r,d = car.step(a)
+
+                if j % demo_frame_freq == 0:
+                    print(a_dist[0],r,d)
+                    car.plotter(j,'Episode '+str(i),'frames/'+run_name+'/ep_'+str(i).zfill(5)+'/'+str(j).zfill(5)+'.png',softmax(a_dist[0]))
+
+                if d:
+                    break
         # end of demo section
 
         telemetry,r,d = car.reset()
@@ -171,7 +177,10 @@ with tf.Session() as sess:
             if np.random.rand(1) < e:
                 a = np.random.randint(a_size)
             else:
-                a = sess.run(actor.predict,feed_dict={actor.state_in:[telemetry]})
+                a_dist = sess.run(actor.Q_out,feed_dict={actor.state_in:[telemetry]})
+                # a = np.random.choice(a_dist[0],p=a_dist[0])
+                a = np.argmax(a_dist[0])
+                #a = np.random.choice(a_size,p=a_dist[0])
 
             telemetry_new,r,d = car.step(a) #Get our reward for taking an action given a bandit.
 
@@ -189,7 +198,7 @@ with tf.Session() as sess:
                 if total_steps % update_frequency == 0:
 
                     train_batch = xp_buffer.sample(batch_size)                
-
+                    
                     chosen_actions = sess.run(actor.predict,feed_dict={actor.state_in: np.vstack(train_batch[:,4])})
                     Q_evaluations = sess.run(critic.Q_out,feed_dict={critic.state_in: np.vstack(train_batch[:,4])})
 
