@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 import matplotlib.image as img
-from car_LCR import Car
+from car_continuous import Car
 import os
 import random
 import time
@@ -17,13 +17,15 @@ image = img.imread('runtrack5.bmp')[:,:,0]
 image = image == 0
 track_px = image.astype(int)
 
-car = Car(track_px)
+r_scale = 0.05
 
-gamma = 0.6
+car = Car(track_px,r_scale)
+
+gamma = 0.99
 save_freq = 1000
-demo_freq = 50
+demo_freq = 100
 demo_frame_freq = 20
-startE = 1
+startE = 0.3
 endE = 0.05
 annealing_steps = 100000
 
@@ -32,8 +34,9 @@ entropy_penalty = 0.0
 max_disc_ret = -1e-5
 tau = 1e-4
 s_size = 8
-a_size = 5
+a_size = 2
 h_size = 16
+entropy_reg = 0.01
 
 total_episodes = 1e6 #Set total number of episodes to train agent on.
 max_ep = 30000
@@ -58,21 +61,26 @@ class Agent():
     def __init__(self, lr, s_size,a_size,h_size,entropy_penalty):
         #These lines established the feed-forward part of the network. The agent takes a state and produces an action.
         self.state_in= tf.placeholder(shape=[None,s_size],dtype=tf.float32)
+        self.actions_in= tf.placeholder(shape=[None,a_size],dtype=tf.float32)
+
         hidden1 = slim.fully_connected(self.state_in,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
         hidden2 = slim.fully_connected(hidden1,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
         #hidden3 = slim.fully_connected(hidden2,h_size,biases_initializer=None,activation_fn=tf.nn.relu)
-        self.pi_out = slim.fully_connected(hidden2,a_size,activation_fn=tf.nn.softmax,biases_initializer=None)
-        self.chosen_action = tf.argmax(self.pi_out,1)
+        self.mu_out = slim.fully_connected(hidden2,a_size,activation_fn=tf.nn.tanh,biases_initializer=None)
+        self.sigma_out = slim.fully_connected(hidden2,a_size,activation_fn=tf.nn.softplus,biases_initializer=None)
+        
+        normal_dist = tf.contrib.distributions.Normal(self.mu_out,self.sigma_out)
+        self.log_prob = normal_dist.log_prob(self.actions_in)
 
+        self.entropy = normal_dist.entropy()
+        self.predict_out = tf.squeeze(normal_dist.sample(1),axis=0)
         #The next six lines establish the training proceedure. We feed the reward and chosen action into the network
         #to compute the loss, and use it to update the network.        
-        self.entropy = tf.placeholder(shape=[None],dtype=tf.float32)
-        self.rewards = tf.placeholder(shape=[None],dtype=tf.float32)
-        self.actions = tf.placeholder(shape=[None],dtype=tf.int32)
-        self.actions_oh = tf.one_hot(self.actions,a_size)
-        self.responsible_pi = tf.reduce_sum(tf.multiply(self.pi_out,self.actions_oh), axis = 1)
-
-        self.loss = -tf.reduce_mean(tf.log(self.responsible_pi)*self.rewards) #+ self.entropy*entropy_penalty
+        
+        self.rewards = tf.placeholder(shape=[None,1],dtype=tf.float32)
+        # self.actions = tf.placeholder(shape=[None,a_size],dtype=tf.float32)
+        
+        self.loss = -tf.reduce_mean(tf.multiply(self.log_prob,self.rewards)) - self.entropy * entropy_reg
         optimizer = tf.train.AdamOptimizer(learning_rate = lr)
         self.update_batch = optimizer.minimize(self.loss)
 
@@ -108,19 +116,17 @@ with tf.Session() as sess:
         prev = time.time()
         # output a demo run with still frames to be giffed together later
         if i % demo_freq == 0:
+            print('Printing Episode')
             os.makedirs('frames/'+run_name+'/ep_'+str(i).zfill(5)+'/')
             telemetry,r,d = car.reset()
             for j in range(max_ep):
 
-                a_dist,a = sess.run([myAgent.pi_out,myAgent.chosen_action],feed_dict={myAgent.state_in:[telemetry]})
-                # a = np.random.choice(a_size,p=a_dist[0])
-                #a = np.argmax(a_dist[0])
+                a = sess.run(myAgent.mu_out,feed_dict={myAgent.state_in:[telemetry]})
                 
-                telemetry,r,d = car.step(a)
+                telemetry,r,d = car.step(a[0])
 
                 if j % demo_frame_freq == 0:
-                    print(a_dist[0],r,d)
-                    car.plotter(j,'Episode '+str(i),'frames/'+run_name+'/ep_'+str(i).zfill(5)+'/'+str(j).zfill(5)+'.png',a_dist[0])
+                    car.plotter(j,'Episode '+str(i),'frames/'+run_name+'/ep_'+str(i).zfill(5)+'/'+str(j).zfill(5)+'.png',a[0])
 
                 if d:
                     break
@@ -134,21 +140,18 @@ with tf.Session() as sess:
         for j in range(max_ep):
             #Probabilistically pick an action given our network outputs.
             
-            # if np.random.rand(1) < e:
-            #     a = np.random.randint(a_size)
+            
             #     a_dist = sess.run(myAgent.pi_out,feed_dict={myAgent.state_in:[telemetry]})
             # else:
             # a_dist,a = sess.run([myAgent.pi_out,myAgent.chosen_action],feed_dict={myAgent.state_in:[telemetry]})
-            a_dist = sess.run(myAgent.pi_out,feed_dict={myAgent.state_in:[telemetry]})
-            a = np.random.choice(a_size,p=a_dist[0])
-            #a = np.argmax(a_dist == a)
-
-            entropy = -np.sum(a_dist[0]*np.log(a_dist[0]))
-
+            a = sess.run(myAgent.predict_out,feed_dict={myAgent.state_in:[telemetry]})
+            
+            if len(a)==1:
+                a = a[0]
 
             telemetry_new,r,d = car.step(a) #Get our reward for taking an action given a bandit.
 
-            ep_history.append([telemetry,a,r,telemetry_new,entropy])
+            ep_history.append([telemetry,a,r,telemetry_new])
             telemetry = telemetry_new
             running_reward += r
             total_steps += 1
@@ -157,15 +160,14 @@ with tf.Session() as sess:
                 ep_history = np.array(ep_history)
                 ep_history[:,2] = discount_rewards(ep_history[:,2])
 
-                ep_history = ep_history[ep_history[:,2]< max_disc_ret,:]
+                # ep_history = ep_history[ep_history[:,2]< max_disc_ret,:]
 
                 e -= eDrop*j
                 for k in range(j):
                     _ = sess.run(myAgent.update_batch,
-                        feed_dict={myAgent.actions:ep_history[:,1],
-                            myAgent.rewards:ep_history[:,2],
+                        feed_dict={myAgent.rewards:np.vstack(ep_history[:,2]),
                                 myAgent.state_in:np.vstack(ep_history[:,0]),
-                                myAgent.entropy:ep_history[:,4]})
+                                    myAgent.actions_in:np.vstack(ep_history[:,1])})
 
                 # # add ep_history into big array
                 # ep_buffer = np.vstack([ep_buffer,ep_history])
@@ -198,7 +200,7 @@ with tf.Session() as sess:
         
         #Update our running tally of scores.
         if i % 100 == 0:
-            print(i,total_steps,np.mean(total_length[-100:]))
+            print(i,total_steps,np.mean(total_reward[-100:]),np.mean(total_length[-100:]))
         
         if i % save_freq == 0:
             save_path = saver.save(sess,'saved_models/model'+str(i)+'ckpt')

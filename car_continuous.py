@@ -14,9 +14,10 @@ import os
 
 
 class Car():
-	def __init__(self,track):
+	def __init__(self,track,r_scale):
 		
 		self.track = track
+		self.r_scale = r_scale
 		self.dt = 0.15							# time unit
 		self.pos = [700,503]#[448,261]					# start position
 		self.theta = 270						# direction pointing (compass)
@@ -24,12 +25,12 @@ class Car():
 		self.d = 0								# cuml distance
 		self.v = [self.s * math.sin(self.theta*180/math.pi),self.s * math.cos(self.theta*180/math.pi)]
 
-		self.max_turn = 1
+		self.max_turn = 2
 		self.max_accel = 1
-		self.max_speed = 50.0
+		self.max_speed = 40.0
 
 		self.ray_d = (-60,-40,-20,0,20,40,60)	# direction rays point rel to car dir
-		self.ray_l = 100.0							# length of rays in px
+		self.ray_l = 200.0							# length of rays in px
 		self.ray_traces = [self.ray_l]*len(self.ray_d)
 		self.ray_tracer()
 
@@ -66,12 +67,13 @@ class Car():
 			pass
 
 	def step(self,action):
-		## action comes as a 9-hot encoded vector, (d,0,a) * (l,c,r) = [dl,dc,dr,0l,0c,0r,al,ac,ar]
-		## NOW action comes as a number 0:2, either L,C,R
+		## action comes as a length 2 tuple, of numbers between -1,1 for how far to accel and steer
 		
-		steer = action -2
+		accel = action[0]
+		steer = action[1]
 
 		self.theta += steer*self.max_turn
+		self.s += min(max(0,accel*self.max_accel),self.max_speed)
 		
 		self.v = [self.s * math.sin(self.theta*math.pi/180),self.s * math.cos(self.theta*math.pi/180)]
 		self.pos[0] += self.v[0]*self.dt
@@ -84,7 +86,7 @@ class Car():
 		done = np.amin(self.ray_traces) <= 1 or self.d > 10000 or (self.ray_traces[3])/(self.s+0.01) <= self.dt
 
 		if not done:
-			reward = 0 #self.s/self.max_speed
+			reward = self.r_scale*self.s/self.max_speed
 		elif self.d > 10000:
 			reward = 0
 		else:
@@ -98,11 +100,12 @@ class Car():
 	def plotter(self,i,title,save_dest,extra=None):
 		fig = plt.figure(figsize=(15,4))
 		fig.suptitle(title, fontsize=16)
-		ax1 = plt.subplot2grid((1,6),(0,0),colspan=2,rowspan=2)
-		ax2 = plt.subplot2grid((1,6),(0,2))
-		ax3 = plt.subplot2grid((1,6),(0,3))
-		ax4 = plt.subplot2grid((1,6),(0,4))
-		ax5 = plt.subplot2grid((1,6),(0,5))
+		ax1 = plt.subplot2grid((1,7),(0,0),colspan=2,rowspan=2)
+		ax2 = plt.subplot2grid((1,7),(0,2))
+		ax3 = plt.subplot2grid((1,7),(0,3))
+		ax4 = plt.subplot2grid((1,7),(0,4))
+		ax5 = plt.subplot2grid((1,7),(0,5))
+		ax6 = plt.subplot2grid((1,7),(0,6))
 
 		ax1.imshow(1-self.track,cmap='gray')
 		ax1.plot(self.pos[0],self.pos[1],marker='.')
@@ -123,8 +126,15 @@ class Car():
 		ax4.text(0.1,0.8,'Timestep:'+str(i))
 		ax4.axis('off')
 
-		ax5.set_ylim([0,1])
-		ax5.bar([-2,-1,0,1,2],extra,width=1)
+		ax5.set_ylim([-1,1])
+		ax5.bar([0],extra[0])
+		ax5.axhline(y=0)
+		ax5.xaxis.set_ticklabels([])
+
+		ax6.set_xlim([-1,1])
+		ax6.barh([-1,0,1],[0,extra[1],0])
+		ax6.axvline(x=0)
+		ax6.yaxis.set_ticklabels([])
 
 		plt.savefig(save_dest)
 		plt.close('all')
@@ -137,25 +147,22 @@ if __name__ == "__main__":
 	image = image == 0
 	track_px = image.astype(int)
 	
-	car = Car(track_px)
+	car = Car(track_px,0.1)
 
 	
 	i = 0
 	done = False
 	os.makedirs('frames/tmp/')
 	running_r = 0
-	while not done and i < 10000000:
-		if i < 140:
-			move = 1
-		else:
-			move = 2
+	while not done and i < 1000:
+		move = (np.random.random()*2-1,np.random.random()*2-1)
 		# state,r,done = car.step(np.random.randint(3))
 		state,r,done = car.step(move)
 		running_r += r
 		if i % 20 == 0:
 			print(i)
 
-			car.plotter(i,'abc','frames/tmp'+str(i).zfill(4)+'.png',[0.1,0.5,0.4])
+			car.plotter(i,'abc','frames/tmp/'+str(i).zfill(4)+'.png',move)
 		i += 1
 	print(running_r)
 

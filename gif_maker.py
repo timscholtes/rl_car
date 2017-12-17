@@ -35,4 +35,4 @@ for ep in ep_folders:
 			if x != path+'Thumbs.db':
 				images.append(imageio.imread(x))
 
-imageio.mimsave('movie.gif', images,fps=20)
+imageio.mimsave('movie.gif', images,fps=15)
