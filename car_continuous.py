@@ -73,7 +73,8 @@ class Car():
 		steer = action[1]
 
 		self.theta += steer*self.max_turn
-		self.s += min(max(0,accel*self.max_accel),self.max_speed)
+		self.s += accel*self.max_accel
+		self.s = min(max(0,self.s),self.max_speed)
 		
 		self.v = [self.s * math.sin(self.theta*math.pi/180),self.s * math.cos(self.theta*math.pi/180)]
 		self.pos[0] += self.v[0]*self.dt
