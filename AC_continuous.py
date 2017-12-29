@@ -168,11 +168,11 @@ with tf.Session() as sess:
                 # ep_history = ep_history[ep_history[:,2]< max_disc_ret,:]
 
                 e -= eDrop*j
-                for k in range(j):
-                    _,__ = sess.run([myAgent.update_actor,myAgent.update_critic],
-                        feed_dict={myAgent.v_target:np.vstack(ep_history[:,2]),
-                                myAgent.state_in:np.vstack(ep_history[:,0]),
-                                myAgent.action_in:np.vstack(ep_history[:,1])})
+                # for k in range(j):
+                _,__ = sess.run([myAgent.update_actor,myAgent.update_critic],
+                    feed_dict={myAgent.v_target:np.vstack(ep_history[:,2]),
+                            myAgent.state_in:np.vstack(ep_history[:,0]),
+                            myAgent.action_in:np.vstack(ep_history[:,1])})
 
                 # # add ep_history into big array
                 # ep_buffer = np.vstack([ep_buffer,ep_history])

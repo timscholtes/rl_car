@@ -27,7 +27,7 @@ startE = 1
 endE = 0.05
 annealing_steps = 100000
 
-lr = 1e-5
+lr = 1e-3
 entropy_penalty = 0.0
 max_disc_ret = -1e-5
 tau = 1e-4
@@ -160,12 +160,12 @@ with tf.Session() as sess:
                 ep_history = ep_history[ep_history[:,2]< max_disc_ret,:]
 
                 e -= eDrop*j
-                for k in range(j):
-                    _ = sess.run(myAgent.update_batch,
-                        feed_dict={myAgent.actions:ep_history[:,1],
-                            myAgent.rewards:ep_history[:,2],
-                                myAgent.state_in:np.vstack(ep_history[:,0]),
-                                myAgent.entropy:ep_history[:,4]})
+                # for k in range(j):
+                _ = sess.run(myAgent.update_batch,
+                    feed_dict={myAgent.actions:ep_history[:,1],
+                        myAgent.rewards:ep_history[:,2],
+                            myAgent.state_in:np.vstack(ep_history[:,0]),
+                            myAgent.entropy:ep_history[:,4]})
 
                 # # add ep_history into big array
                 # ep_buffer = np.vstack([ep_buffer,ep_history])
