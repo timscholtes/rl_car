@@ -16,7 +16,7 @@ The learning is not the most stable - while it is able to learn optimal policies
 
 See also a gif of final performance on the track. The track positioning and speed vector are in the top left, and a plot of historical speed against distance covered is in the bottom left. Top right is the policy outpout (as a gaussian distribution in acceleration and steering), with bottom left being the input to the policy and value networks (actor/critic), which is the distance of angled rays outwards from the car until a wall, as well as current speed.
 
-![alt text](https://github.com/timscholtes/rl_car/blob/master/movie.gif)
+![](https://github.com/timscholtes/rl_car/blob/master/movie.gif)
 
 ## Credit
 
