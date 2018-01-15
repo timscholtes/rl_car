@@ -24,7 +24,7 @@ See also a gif of final performance on the track. The track positioning and spee
 
 As mentioned above, I'd love to spend some more time working on the credit assignment problem, I suspect that plenty of methods around the use of auxiliary memory structures would help although I haven't had the time to research the literature yet!
 
-One area I'm very interested to explore, particularly as I have implemented continuous control, is DDPG (and it's newer counterpart, D4PG), although exploration will be a challenge. To that end, I'd also like to explore more efficient exploration, as currently in 'play from the start' environments likely spend a lot of time exploring the early part of the 'level', as a random walk will most of the time diffuse to a stopping criterion. Perhaps starting from a randomly selected state in some cache of states previously visited could help increase diversity in exploration examples.
+One area I'm very interested to explore, particularly as I have implemented continuous control, is DDPG (and it's newer counterpart, D4PG), although exploration will be a challenge. To that end, I'd also like to explore more efficient exploration, as 'play from the start' environments likely spend a lot of time exploring the early part of the 'level', as a random walk will most of the time diffuse to a stopping criterion. Perhaps starting from a randomly selected state in some cache of states previously visited could help increase diversity in exploration examples.
 
 
 
@@ -36,7 +36,7 @@ To learn these techniques, I followed the **excellent** tutorial by Arthur Julia
 
 Some of the code is heavily adapted from his examples. Additional research for this project
 
-![DQN](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf): Mnih et al. (2015)
-![A3C paper](https://arxiv.org/pdf/1602.01783.pdf): Mnih (2016)
-![Dueling Q-learning](https://arxiv.org/pdf/1511.06581.pdf): Wang et al. (2016)
-![Double Q-learning](https://arxiv.org/pdf/1509.06461.pdf): van Hasselt (2016)
+[DQN](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf): Mnih et al. (2015)
+[A3C paper](https://arxiv.org/pdf/1602.01783.pdf): Mnih (2016)
+[Dueling Q-learning](https://arxiv.org/pdf/1511.06581.pdf): Wang et al. (2016)
+[Double Q-learning](https://arxiv.org/pdf/1509.06461.pdf): van Hasselt (2016)
