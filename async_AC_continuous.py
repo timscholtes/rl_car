@@ -16,7 +16,7 @@ except:
     xrange = range
 
 # load in the track
-image = img.imread('runtrack5.bmp')[:,:,0]
+image = img.imread('tracks/runtrack5.bmp')[:,:,0]
 image = image == 0
 track_px = image.astype(int)
 
